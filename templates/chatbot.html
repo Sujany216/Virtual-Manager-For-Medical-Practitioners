@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Manager for Medical Practitioners</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="fas fa-heartbeat me-2"></i>Virtual Manager for Medical Practitioners
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('dashboard') }}"><i class="fas fa-tachometer-alt me-1"></i>Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt me-1"></i>Logout</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Chatbot Container -->
+    <div class="chatbot-container py-5">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-8">
+                    <div class="chatbot-card">
+                        <div class="chatbot-header">
+                            <div class="chatbot-avatar">
+                                <i class="fas fa-robot"></i>
+                            </div>
+                            <div class="chatbot-info">
+                                <h3>Medical Assistant</h3>
+                                <p class="text-muted">How can I help you today?</p>
+                            </div>
+                        </div>
+                        
+                        <div class="chatbot-body" id="chatMessages">
+                            <!-- Messages will appear here -->
+                            <div class="chat-message bot-message">
+                                <div class="message-content">
+                                    <p>Hello! I'm your medical assistant. You can ask me about symptoms, medications, or general health advice. Please remember I'm not a substitute for professional medical advice.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="chatbot-footer">
+                            <form id="chatForm" class="input-group">
+                                <input type="text" class="form-control" id="userMessage" placeholder="Type your health question here..." autocomplete="off">
+                                <button class="btn btn-primary" type="submit">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </form>
+                            <div class="suggestions mt-2">
+                                <small>Try asking:</small>
+                                <div class="suggestion-buttons">
+                                    <button class="btn btn-sm btn-outline-secondary suggestion-btn">Symptoms of flu</button>
+                                    <button class="btn btn-sm btn-outline-secondary suggestion-btn">Best treatment for headache</button>
+                                    <button class="btn btn-sm btn-outline-secondary suggestion-btn">How to lower blood pressure</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script>
+        document.getElementById('chatForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const userMessage = document.getElementById('userMessage').value.trim();
+            if (userMessage) {
+                // Add user message to chat
+                addMessageToChat(userMessage, 'user');
+                
+                // Clear input
+                document.getElementById('userMessage').value = '';
+                
+                // Show typing indicator
+                const typingIndicator = document.createElement('div');
+                typingIndicator.className = 'chat-message bot-message typing-indicator';
+                typingIndicator.innerHTML = `
+                    <div class="message-content">
+                        <div class="typing-dots">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('chatMessages').appendChild(typingIndicator);
+                
+                // Scroll to bottom
+                document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+                
+                // Send message to server
+                fetch('{{ url_for("get_chat_response") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: userMessage })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Remove typing indicator
+                    const indicators = document.querySelectorAll('.typing-indicator');
+                    indicators.forEach(indicator => indicator.remove());
+                    
+                    // Add bot response
+                    addMessageToChat(data.response, 'bot');
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    // Remove typing indicator
+                    const indicators = document.querySelectorAll('.typing-indicator');
+                    indicators.forEach(indicator => indicator.remove());
+                    
+                    // Add error message
+                    addMessageToChat("Sorry, I'm having trouble connecting. Please try again later.", 'bot');
+                });
+            }
+        });
+        
+        // Add click event for suggestion buttons
+        document.querySelectorAll('.suggestion-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                document.getElementById('userMessage').value = this.textContent;
+                document.getElementById('userMessage').focus();
+            });
+        });
+        
+        function addMessageToChat(message, sender) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${sender}-message`;
+            
+            messageDiv.innerHTML = `
+                <div class="message-content">
+                    <p>${message}</p>
+                </div>
+            `;
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    </script>
+</body>
+</html>
